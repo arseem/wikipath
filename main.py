@@ -21,12 +21,13 @@ class PathPuller:
         article = soup.find('div', {"id": "bodyContent"})
 
         self.visited.append(page.split('/wiki/')[-1])
+        print(page.split('/wiki/')[-1].replace('_', ' '))
 
         links = []
         for anchor in article.find_all('a'):
             link = anchor.get('href', '/')
             links.append(f'https://wikipedia.org{link}') if link.startswith('/wiki/') and not ':' in link and link.split('/wiki/')[-1] not in self.visited else None
-            if link == self.destination:
+            if link == self.destination.split('/wiki/')[-1]:
                 return -1, link
 
         return page, links
@@ -52,6 +53,6 @@ class PathPuller:
         return 'No connection in specified range'
 
 
-bs = PathPuller('https://wikipedia.org/wiki/Spoon', 'https://wikipedia.org/wiki/Adolf_Hitler')
+bs = PathPuller('https://wikipedia.org/wiki/World_War_II', 'https://wikipedia.org/wiki/Adolf_Hitler')
 print(bs.search())
 
