@@ -1,10 +1,14 @@
+from multiprocessing.sharedctypes import Value
 from tracemalloc import start
 import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor
-from time import perf_counter
+from time import perf_counter, sleep
+import os
+import threading
+import wikipediaapi
 
-NUM_THREADS = 1000
+NUM_THREADS = 100
 
 class PathPuller:
 
@@ -17,6 +21,8 @@ class PathPuller:
         self.depth = 0
         self.max_depth = max_depth
 
+        self.found = 0
+
 
     def get_links_from_page(self, page):
         try:
@@ -28,7 +34,7 @@ class PathPuller:
         article = soup.find('div', {"id": "bodyContent"})
 
         self.visited.append(page.split('/wiki/')[-1])
-        print(page.split('/wiki/')[-1].replace('_', ' '))
+        #print(page.split('/wiki/')[-1].replace('_', ' '))
 
         links = []
         for anchor in article.find_all('a'):
@@ -45,10 +51,12 @@ class PathPuller:
         if links[0][0][0]==-1:
             self.current_path.append(self.destination.split('/wiki/')[-1])
             self.current_path = [n.replace('_', ' ').replace('%27', "'") for n in self.current_path]
+            self.found = 1
             return self.current_path, len(self.visited)
 
         for i in range(self.max_depth):
             links.append([])
+            self.depth = i+1
             set_of_links = links[i]
             with ThreadPoolExecutor(max_workers=NUM_THREADS) as self.executor:
                 for new_links in self.executor.map(self.get_links_from_page, [l[-1] for l in set_of_links][0]):
@@ -58,6 +66,7 @@ class PathPuller:
                         self.current_path.append(new_links[1].split('/wiki/')[-1])
                         self.current_path.append(new_links[-1].split('/wiki/')[-1])
                         self.current_path = [n.replace('_', ' ').replace('%27', "'") for n in self.current_path]
+                        self.found = 1
                         return self.current_path, len(self.visited)
                     
                     links[i+1].append(new_links)
@@ -66,38 +75,73 @@ class PathPuller:
 
 
 
-def main():
+def status_monitor(pp):
+    while not pp.found:
+        os.system('cls' if os.name=='nt' else 'clear')
+        print('STATUS MONITOR\n')
+        print(f'Active threads: {threading.active_count()}/{NUM_THREADS}')
+        print(f'Layer: {pp.depth}')
+        print(f'Visited pages: {len(pp.visited)}')
+        print(f'Last seen: {pp.visited[-1] if len(pp.visited)>0 else None}')
+        sleep(1)
+
+
+def get_user_input():
+    wiki = wikipediaapi.Wikipedia('en')
     while True:
         source = input('Source page>> ')
 
-        source.replace(' ', '_')
+        source = source.replace(' ', '_')
         source = f'https://wikipedia.org/wiki/{source}' if not '/wiki/' in source else source
+        tocheck = source.split('/wiki/')[-1]
 
-        try:
-            requests.get(source)
+        if wiki.page(tocheck).exists():
+            print(f'Setting source page: {source}')
             break
-        except requests.exceptions.ConnectionError:
+        else:
             print(f'\nSource page does not exist: {source}\n')
 
     print('\n')
     while True:
         dest = input('Destination page>> ')
 
-        dest.replace(' ', '_')
-        dest = f'https://wikipedia.org/wiki/{dest}' if not '/wiki/' in source else source
+        dest = dest.replace(' ', '_')
+        dest = f'https://wikipedia.org/wiki/{dest}' if not '/wiki/' in dest else dest
+        tocheck = dest.split('/wiki/')[-1]
 
-        try:
-            requests.get(dest)
+        if wiki.page(tocheck).exists():
+            print(f'Setting destination page: {dest}')
             break
-        except requests.exceptions.ConnectionError:
+        else:
             print(f'\nDestination page does not exist: {dest}\n')
 
+    print('\n')
+    while True:
+        try:
+            range = int(input('Max range>> '))
+            break
+        except ValueError:
+            print(f'\nMust be a number\n')
 
-    bs = PathPuller(source, dest)
+    return source, dest, range
+
+
+def main():
+    source, dest, range = get_user_input()
+
+    bs = PathPuller(source, dest, max_depth=range)
+    
+    loading_thread = threading.Thread(target=status_monitor, args=[bs], daemon=True)
+    loading_thread.start()
+    
     start_timer = perf_counter()
     result, num = bs.search()
+    fin = 's' if num!=1 else ''
+
+    loading_thread.join()
+
     print('\n')
-    print(f'{num} pages visited\nTime: {perf_counter()-start_timer:.2f}s')
+    print(f'{num} page{fin} visited\nTime: {perf_counter()-start_timer:.2f}s')
     if result!=-1:
         print(result[0], end='')
         for i in result[1:]:
