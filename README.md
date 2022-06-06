@@ -1,8 +1,8 @@
-# **WikiPath**   //    Shortest path between two articles
-**WikiPath** is a small web scraping project originating from an internet game of finding the shortest way to get from one Wikipedia article to another, clicking only in the content section links.<br>
+# **WikiPath** 
+**WikiPath** is a small web scraping project originating from an internet game of finding the shortest way to get from one Wikipedia article to another, clicking on the content section links only.<br>
 
 ## About the project
-This simple script utilizes beautifulsoup library to parse html of the chosen Wikipedia article and extract all the links from the main content section. Then, performing the same action for pages under extracted links, creating directed tree of articles until the destination page is found or maximum given range is exceeded.  
+This simple script utilizes beautifulsoup library to parse html of the chosen Wikipedia article and extract all the links from the main content section. Then, performs the same action for pages under extracted links, creating directed tree of articles, until the destination page is found or maximum given range is exceeded.  
 
 ## Technologies in use
 - Python
