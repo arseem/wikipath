@@ -1,5 +1,3 @@
-from multiprocessing.sharedctypes import Value
-from tracemalloc import start
 import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor
@@ -127,6 +125,7 @@ def get_user_input():
 
 
 def main():
+    os.system('cls' if os.name=='nt' else 'clear')
     source, dest, range = get_user_input()
 
     bs = PathPuller(source, dest, max_depth=range)
@@ -139,8 +138,8 @@ def main():
     fin = 's' if num!=1 else ''
 
     loading_thread.join()
-
-    print('\n')
+    os.system('cls' if os.name=='nt' else 'clear')
+    print('RESULT\n')
     print(f'{num} page{fin} visited\nTime: {perf_counter()-start_timer:.2f}s')
     if result!=-1:
         print(result[0], end='')
@@ -149,6 +148,9 @@ def main():
 
     else:
         print('No connection in specified range')
+
+    input('\nPress any key to restart')
+    main()
 
 
 
