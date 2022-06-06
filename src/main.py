@@ -149,7 +149,8 @@ def main():
     else:
         print('No connection in specified range')
 
-    input('\nPress any key to restart')
+    print('\n')
+    input('Press Enter to restart...')
     main()
 
 
