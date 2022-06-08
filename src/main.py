@@ -6,7 +6,7 @@ import os
 import threading
 import wikipediaapi
 
-NUM_THREADS = 100
+NUM_THREADS = 1000
 
 class PathPuller:
 
@@ -35,12 +35,20 @@ class PathPuller:
         #print(page.split('/wiki/')[-1].replace('_', ' '))
 
         links = []
-        for anchor in article.find_all('a'):
-            link = anchor.get('href', '/')
-            links.append(f'https://wikipedia.org{link}') if link.startswith('/wiki/') and not (':' in link) and (link.split('/wiki/')[-1] not in self.visited) else None
-            if link.split('/wiki/')[-1] == self.destination.split('/wiki/')[-1]:
-                #self.executor.shutdown(cancel_futures=True)
-                return -1, page, link
+        if article:
+            for anchor in article.find_all('a'):
+                link = anchor.get('href', '/')
+                links.append(f'https://wikipedia.org{link}') if link.startswith('/wiki/') and not (':' in link) and (link.split('/wiki/')[-1] not in self.visited) else None
+                if link.split('/wiki/')[-1] == self.destination.split('/wiki/')[-1]:
+                    new_links = (-1, page, link)
+                    set_of_links = self.set_of_links
+                    self.current_path.append(set_of_links[0][0].split('/wiki/')[-1]) if set_of_links[0][0].split('/wiki/')[-1]!=self.current_path[0] else None
+                    self.current_path.append(new_links[1].split('/wiki/')[-1])
+                    self.current_path.append(new_links[-1].split('/wiki/')[-1])
+                    self.current_path = [n.replace('_', ' ').replace('%27', "'") for n in self.current_path]
+                    self.found = 1
+                    self.executor.shutdown(cancel_futures=True, wait=False)
+                    return -1, page, link
 
         return page, links
 
@@ -56,18 +64,17 @@ class PathPuller:
             links.append([])
             self.depth = i+1
             set_of_links = links[i]
-            with ThreadPoolExecutor(max_workers=NUM_THREADS) as self.executor:
-                for new_links in self.executor.map(self.get_links_from_page, [l[-1] for l in set_of_links][0]):
-                    if new_links[0] == -1:
-                        self.executor.shutdown(cancel_futures=True)
-                        self.current_path.append(set_of_links[0][0].split('/wiki/')[-1]) if set_of_links[0][0].split('/wiki/')[-1]!=self.current_path[0] else None
-                        self.current_path.append(new_links[1].split('/wiki/')[-1])
-                        self.current_path.append(new_links[-1].split('/wiki/')[-1])
-                        self.current_path = [n.replace('_', ' ').replace('%27', "'") for n in self.current_path]
-                        self.found = 1
-                        return self.current_path, len(self.visited)
-                    
-                    links[i+1].append(new_links)
+            self.set_of_links = set_of_links
+            try:
+                with ThreadPoolExecutor(max_workers=NUM_THREADS) as self.executor:
+                    for new_links in self.executor.map(self.get_links_from_page, [l[-1] for l in set_of_links][0]):
+                        if new_links[0] == -1:
+                            return self.current_path, len(self.visited)
+                        
+                        links[i+1].append(new_links)
+
+            except RuntimeError:
+                return self.current_path, len(self.visited)
 
         return -1, len(self.visited)
 
@@ -142,9 +149,11 @@ def main():
     print('RESULT\n')
     print(f'{num} page{fin} visited\nTime: {perf_counter()-start_timer:.2f}s')
     if result!=-1:
-        print(result[0], end='')
-        for i in result[1:]:
-            print(f' --> {i}', end='')
+        for i in result:
+            if i!=result[0]:
+                print(f' --> {i}', end='')
+            else:
+                print(f'\n{result[0]}', end='')
 
     else:
         print('No connection in specified range')
