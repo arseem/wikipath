@@ -10,6 +10,10 @@ This simple script utilizes beautifulsoup library to parse html of the chosen Wi
   - requests
   - API
   - threading & concurrent.futures
+
+## Example
+
+![example gif](https://github.com/arseem/wikipath/blob/master/example/example-python-warsaw.gif "Example")
 ## Requirements
 
 <details>
