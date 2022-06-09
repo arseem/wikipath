@@ -95,7 +95,7 @@ def status_monitor(pp):
             if len(pp.con_err)<5:
                 for i in pp.con_err[:-1]:
                     fcon+=f'{i}, ' 
-                fcon+=str(pp.con_err[:-1])
+                fcon+=str(pp.con_err[-1])
             else:
                 for i in range(1, 5):
                     fcon+=f'{pp.con_err[-i]}, '
